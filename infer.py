@@ -16,7 +16,7 @@ from runners import utils as rn_utils
 from external.Graphonomy import wrapper
 import face_alignment
 
-
+import time
 
 class InferenceWrapper(nn.Module):
     @staticmethod
@@ -195,4 +195,82 @@ class InferenceWrapper(nn.Module):
         else:
             self.runner(data_dict)
 
+        return self.runner.data_dict
+
+class InferenceWrapper2(InferenceWrapper):
+
+    def initialization(self, data_dict, crop_data=True):
+        (source_poses, 
+         source_imgs, 
+         source_segs, 
+         source_stickmen) = self.preprocess_data(data_dict['source_imgs'], crop_data)
+
+        self.source_data_dict = {
+            'source_imgs': source_imgs,
+            'source_stickmen': source_stickmen,
+            'source_segs': source_segs,
+            'source_poses': source_poses}
+
+    def get_pose(self, input_imgs, crop_data=True):
+        poses = []
+        if len(input_imgs.shape) == 3:
+            input_imgs = input_imgs[None]
+            N = 1
+
+        else:
+            N = input_imgs.shape[0]
+
+        for i in range(N):
+            pose = self.fa.get_landmarks(input_imgs[i])[0]
+
+            center = ((pose.min(0) + pose.max(0)) / 2).round().astype(int)
+            size = int(max(pose[:, 0].max() - pose[:, 0].min(), pose[:, 1].max() - pose[:, 1].min()))
+            center[1] -= size // 6
+
+            if input_imgs is None:
+                # Crop poses
+                if crop_data:
+                    s = size * 2
+                    pose -= center - size
+
+            else:
+                # Crop images and poses
+                img = Image.fromarray(input_imgs[i])
+
+                if crop_data:
+                    img = img.crop((center[0]-size, center[1]-size, center[0]+size, center[1]+size))
+                    s = img.size[0]
+                    pose -= center - size
+
+                img = img.resize((self.args.image_size, self.args.image_size), Image.BICUBIC)
+
+            if crop_data:
+                pose = pose / float(s)
+
+            poses.append(torch.from_numpy((pose - 0.5) * 2).view(-1))
+
+        poses = torch.stack(poses, 0)[None]
+
+        if self.args.num_gpus > 0:
+            poses = poses.cuda()
+
+        return poses
+
+    def forward(self, data_dict, crop_data=True, no_grad=True):
+        start = time.time()
+        target_poses = self.get_pose(data_dict['target_imgs'], crop_data)
+        elapsed_time = time.time() - start
+        print ("get_pose_time:{0}".format(elapsed_time) + "[sec]")
+
+        data_dict = self.source_data_dict
+        data_dict['target_poses'] = target_poses
+        start = time.time()
+        if no_grad:
+            with torch.no_grad():
+                self.runner(data_dict)
+        else:
+            self.runner(data_dict)
+        elapsed_time = time.time() - start
+        print ("detection_time:{0}".format(elapsed_time) + "[sec]")
+        
         return self.runner.data_dict
