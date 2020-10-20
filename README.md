@@ -1,5 +1,7 @@
 # Fast Bi-layer Neural Synthesis of One-Shot Realistic Head Avatars
 
+Start camera test by changing dir to test folder and run test.py
+
 A project on the speed up of one-shot adversarially trained human pose to image translation models for mobile devices.
 
 <img src="https://saic-violet.github.io/bilayer-model/assets/teaser.png"/>
