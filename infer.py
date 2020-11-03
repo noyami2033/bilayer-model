@@ -80,6 +80,11 @@ class InferenceWrapper(nn.Module):
 
         self.net_seg = wrapper.SegmentationWrapper(self.args)
 
+        # Remove spectral norm to improve the performance
+        self.runner.apply(rn_utils.remove_spectral_norm)
+
+        # self.runner.apply(rn_utils.prepare_for_mobile_inference)        
+
         if self.args.num_gpus > 0:
             self.cuda()
 
@@ -210,6 +215,9 @@ class InferenceWrapper2(InferenceWrapper):
             'source_stickmen': source_stickmen,
             'source_segs': source_segs,
             'source_poses': source_poses}
+
+    def mobile_prepare(self):
+        self.runner.apply(rn_utils.prepare_for_mobile_inference)
 
     def get_pose(self, input_imgs, crop_data=True):
         poses = []

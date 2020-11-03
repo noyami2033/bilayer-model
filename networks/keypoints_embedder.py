@@ -48,6 +48,18 @@ class NetworkWrapper(nn.Module):
 
             self.register_buffer('frequencies', frequencies)
 
+    def predict_target_embedding(self, tgt_poses):
+        target_poses = tgt_poses
+
+        b, t = target_poses.shape[:2]
+        target_poses = target_poses.view(b*t, -1)
+
+        target_embeds = self.net(target_poses)
+
+        target_poses_embedding = target_embeds.view(b, t, *target_embeds.shape[1:])
+
+        return target_poses_embedding
+
     def forward(
             self, 
             data_dict: dict,

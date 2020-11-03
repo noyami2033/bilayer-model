@@ -64,6 +64,47 @@ class NetworkWrapper(nn.Module):
         identity_grid = torch.stack([u, v], 2)[None] # 1 x h x w x 2
         self.register_buffer('identity_grid', identity_grid)
 
+    def predict_lf_img(self, idt_embeds, tpe, pthf):
+
+        inf_weights, inf_biases = self.prj_inf(idt_embeds)
+        self.assign_adaptive_params(self.gen_inf, inf_weights, inf_biases)
+
+        # target_pose_embeds = data_dict['target_pose_embeds']
+        target_pose_embeds = tpe
+        # pred_tex_hf_rgbs = data_dict['pred_tex_hf_rgbs'][:, 0]
+        pred_tex_hf_rgbs = pthf
+
+        b, t = target_pose_embeds.shape[:2]
+        target_pose_embeds = target_pose_embeds.view(b*t, *target_pose_embeds.shape[2:])
+
+        outputs = self.gen_inf(target_pose_embeds)
+
+        # Parse the outputs
+        pred_target_delta_uvs = outputs[0]
+        pred_target_uvs = self.identity_grid + pred_target_delta_uvs.permute(0, 2, 3, 1)
+
+        pred_target_delta_lf_rgbs = outputs[1]
+
+        ### Combine components into an output target image
+        pred_tex_hf_rgbs_repeated = torch.cat([pred_tex_hf_rgbs[:, None]]*t, dim=1)
+        pred_tex_hf_rgbs_repeated = pred_tex_hf_rgbs_repeated.view(b*t, *pred_tex_hf_rgbs.shape[1:])
+
+        pred_target_delta_hf_rgbs = F.grid_sample(pred_tex_hf_rgbs_repeated, pred_target_uvs)
+
+        # Final image
+        pred_target_imgs = pred_target_delta_lf_rgbs + pred_target_delta_hf_rgbs
+
+        pred_target_segs_logits = outputs[2]
+        pred_target_segs = torch.sigmoid(pred_target_segs_logits)
+
+        reshape_target_data = lambda data: data.view(b, t, *data.shape[1:])
+
+        pred_target_imgs = reshape_target_data(pred_target_imgs).detach()
+        pred_target_segs = reshape_target_data(pred_target_segs).detach()
+
+        return pred_target_imgs, pred_target_segs
+
+
     def forward(
             self, 
             data_dict: dict,

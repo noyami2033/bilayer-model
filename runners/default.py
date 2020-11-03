@@ -174,6 +174,26 @@ class RunnerWrapper(nn.Module):
             True: {}, # self.training = True
             False: {}}
 
+    def predict_source_dict(self, data_dict):
+        if self.training:
+            nets_names = self.nets_names_train
+            networks_to_train = self.nets_names_to_train
+
+            losses_names = self.losses_names_train
+
+        else:
+            nets_names = self.nets_names_test
+            networks_to_train = []
+
+            losses_names = self.losses_names_test
+
+        output_data_dict = data_dict
+        idt_embeding_out = self.nets["identity_embedder"](output_data_dict, networks_to_train, self.nets)
+
+        tex_generator_out = self.nets["texture_generator"](idt_embeding_out, networks_to_train, self.nets)
+        return tex_generator_out
+
+
     def forward(self, data_dict):
         ### Set lists of networks' and losses' names ###
         if self.training:
@@ -203,6 +223,8 @@ class RunnerWrapper(nn.Module):
         loss = self.process_losses_dict(losses_dict)
 
         return loss
+
+
 
     ########################################################
     #                     Utility functions                #

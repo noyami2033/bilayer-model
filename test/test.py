@@ -9,6 +9,7 @@ from infer import InferenceWrapper2
 import cv2
 import numpy 
 import time
+import os
 
 def to_image(img_tensor, seg_tensor=None):
     img_array = ((img_tensor.clamp(-1, 1).cpu().numpy() + 1) / 2).transpose(1, 2, 0) * 255
@@ -41,23 +42,37 @@ source_data_dict = {
 
 module.initialization(source_data_dict)
 
+src_dict = module.source_data_dict
+src_dict = module.runner.predict_source_dict(src_dict)
+
+idt_embedding = src_dict['source_idt_embeds']
+pred_tex_hf_rgbs = src_dict["pred_tex_hf_rgbs"][:, 0]
+
 vs = cv2.VideoCapture(0)
 vs.set(3,1280) #width
 vs.set(4,720) #height
 
 while(True):
+
     (grabbed, camera_frame) = vs.read()
 
     tgt_image = Image.fromarray(cv2.cvtColor(camera_frame,cv2.COLOR_BGR2RGB))  
+    tgt_image = np.asarray(tgt_image)[None]
 
-    target_data_dict = {
-        'target_imgs': np.asarray(tgt_image)[None]} # B x H x W x # 3
+    start = time.time()
+    tgt_pose = module.get_pose(tgt_image, True)
+    elapsed_time = time.time() - start
+    print ("get_pose_time:{0}".format(elapsed_time) + "[sec]")
 
-    output_data_dict = module(target_data_dict)
+    start = time.time()
+    tgt_pose_embedding = module.runner.nets["keypoints_embedder"].predict_target_embedding(tgt_pose)
+    pred_target_imgs,pred_target_segs = module.runner.nets["inference_generator"].predict_lf_img(idt_embedding, tgt_pose_embedding, pred_tex_hf_rgbs)
+    elapsed_time = time.time() - start
+    print ("detection_time:{0}".format(elapsed_time) + "[sec]")
 
-    pred_img = to_image(output_data_dict['pred_enh_target_imgs'][0, 0], output_data_dict['pred_target_segs'][0, 0])
-
+    pred_img = to_image(pred_target_imgs[0, 0], pred_target_segs[0, 0])
     output_img = cv2.cvtColor(numpy.asarray(pred_img),cv2.COLOR_RGB2BGR) 
+
     cv2.imshow("cv", output_img)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
