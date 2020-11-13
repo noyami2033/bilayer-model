@@ -43,7 +43,7 @@ source_data_dict = {
 module.initialization(source_data_dict)
 
 src_dict = module.source_data_dict
-src_dict = module.runner.predict_source_dict(src_dict)
+src_dict, pred_enh_tex_hf_rgbs = module.runner.predict_source_dict(src_dict)
 
 idt_embedding = src_dict['source_idt_embeds']
 pred_tex_hf_rgbs = src_dict["pred_tex_hf_rgbs"][:, 0]
@@ -66,7 +66,7 @@ while(True):
 
     start = time.time()
     tgt_pose_embedding = module.runner.nets["keypoints_embedder"].predict_target_embedding(tgt_pose)
-    pred_target_imgs,pred_target_segs = module.runner.nets["inference_generator"].predict_lf_img(idt_embedding, tgt_pose_embedding, pred_tex_hf_rgbs)
+    pred_target_imgs,pred_target_segs = module.runner.nets["inference_generator"].predict_lf_img(idt_embedding, tgt_pose_embedding, pred_tex_hf_rgbs, pred_enh_tex_hf_rgbs)
     elapsed_time = time.time() - start
     print ("detection_time:{0}".format(elapsed_time) + "[sec]")
 

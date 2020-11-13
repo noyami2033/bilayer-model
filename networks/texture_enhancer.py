@@ -197,7 +197,8 @@ class NetworkWrapper(nn.Module):
         ### Store outputs ###
         reshape_target_data = lambda data: data.view(b, t, *data.shape[1:])
 
-        data_dict['pred_enh_tex_hf_rgbs'] = reshape_target_data(enh_tex_hf_rgbs)
+        # data_dict['pred_enh_tex_hf_rgbs'] = reshape_target_data(enh_tex_hf_rgbs)
+        data_dict['pred_enh_tex_hf_rgbs'] = enh_tex_hf_rgbs
 
         data_dict['pred_enh_target_imgs'] = reshape_target_data(pred_enh_target_imgs)
 

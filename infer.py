@@ -269,9 +269,9 @@ class InferenceWrapper2(InferenceWrapper):
         target_poses = self.get_pose(data_dict['target_imgs'], crop_data)
         elapsed_time = time.time() - start
         print ("get_pose_time:{0}".format(elapsed_time) + "[sec]")
-
         data_dict = self.source_data_dict
         data_dict['target_poses'] = target_poses
+
         start = time.time()
         if no_grad:
             with torch.no_grad():

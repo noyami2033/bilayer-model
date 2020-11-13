@@ -64,7 +64,7 @@ class NetworkWrapper(nn.Module):
         identity_grid = torch.stack([u, v], 2)[None] # 1 x h x w x 2
         self.register_buffer('identity_grid', identity_grid)
 
-    def predict_lf_img(self, idt_embeds, tpe, pthf):
+    def predict_lf_img(self, idt_embeds, tpe, pthf, pred_enh_tex_hf_rgbs):
 
         inf_weights, inf_biases = self.prj_inf(idt_embeds)
         self.assign_adaptive_params(self.gen_inf, inf_weights, inf_biases)
@@ -89,7 +89,8 @@ class NetworkWrapper(nn.Module):
         pred_tex_hf_rgbs_repeated = torch.cat([pred_tex_hf_rgbs[:, None]]*t, dim=1)
         pred_tex_hf_rgbs_repeated = pred_tex_hf_rgbs_repeated.view(b*t, *pred_tex_hf_rgbs.shape[1:])
 
-        pred_target_delta_hf_rgbs = F.grid_sample(pred_tex_hf_rgbs_repeated, pred_target_uvs)
+        # pred_target_delta_hf_rgbs = F.grid_sample(pred_tex_hf_rgbs_repeated, pred_target_uvs)
+        pred_target_delta_hf_rgbs = F.grid_sample(pred_enh_tex_hf_rgbs, pred_target_uvs)
 
         # Final image
         pred_target_imgs = pred_target_delta_lf_rgbs + pred_target_delta_hf_rgbs
@@ -111,6 +112,7 @@ class NetworkWrapper(nn.Module):
             networks_to_train: list,
             all_networks: dict, # dict of all networks in the model
         ) -> dict:
+
 
         # Do not store activations if this network is not being trained
         if 'inference_generator' not in networks_to_train and not self.args.inf_calc_grad:

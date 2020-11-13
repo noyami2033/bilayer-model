@@ -187,11 +187,16 @@ class RunnerWrapper(nn.Module):
 
             losses_names = self.losses_names_test
 
+        data_dict['target_poses'] = data_dict['source_poses']
+
         output_data_dict = data_dict
         idt_embeding_out = self.nets["identity_embedder"](output_data_dict, networks_to_train, self.nets)
-
         tex_generator_out = self.nets["texture_generator"](idt_embeding_out, networks_to_train, self.nets)
-        return tex_generator_out
+        keypoints_embedder_out = self.nets["keypoints_embedder"](tex_generator_out, networks_to_train, self.nets)
+        inference_generator_out = self.nets["inference_generator"](keypoints_embedder_out, networks_to_train, self.nets)
+        texture_enhancer_out = self.nets["texture_enhancer"](inference_generator_out, networks_to_train, self.nets)
+        pred_enh_tex_hf_rgbs = texture_enhancer_out["pred_enh_tex_hf_rgbs"]
+        return tex_generator_out, pred_enh_tex_hf_rgbs
 
 
     def forward(self, data_dict):
